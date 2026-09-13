@@ -1,4 +1,4 @@
-# mini_app_observability
+# newrelic-observability-lab
 
 **New Relic を「触って覚える」ための練習用アプリです。**
 
@@ -84,8 +84,8 @@ iOS を使わず、ターミナルの `curl` だけでも全機能を試せま�
 ### 1. API を起動する
 
 ```bash
-git clone https://github.com/iori1261/mini_app_observability.git
-cd mini_app_observability
+git clone https://github.com/iori1261/newrelic-observability-lab.git
+cd newrelic-observability-lab
 cp .env.example .env
 docker compose up --build -d
 ```
@@ -109,7 +109,7 @@ make verify   # 全シナリオを 1 回ずつ実行して結果を表示
 
 1. [New Relic](https://newrelic.com/) で無料アカウントを作る
 2. [one.newrelic.com/api-keys](https://one.newrelic.com/api-keys) を開く
-3. **画面右上にある自分のアイコンCreate a key** → Key type は **Ingest - License** を選ぶ
+3. **画面右上にある自分のアイコンをクリックして「API Key」を開く→Create a key** → Key type は **Ingest - License** を選ぶ
 4. 作成直後に表示されるキー全体をコピーする
 
 > 一覧に出ている **Key ID** は鍵ではありません。これを貼ると `401 invalid license key` になります。
