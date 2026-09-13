@@ -23,13 +23,18 @@ echo "失敗率 : 約 ${ERROR_PERCENT}%"
 echo
 
 post() {
-  curl -sS -o /dev/null -w '%{http_code}' \
-    -X POST \
-    -H 'content-type: application/json' \
-    -H 'x-client-platform: script' \
-    -H "x-client-action: $1" \
-    ${3:+-d "$3"} \
-    "${BASE_URL}$2"
+  local action="$1" path="$2" body="${3:-}"
+  local args=(-sS -o /dev/null -w '%{http_code}'
+    -X POST
+    -H 'content-type: application/json'
+    -H 'x-client-platform: script'
+    -H "x-client-action: ${action}")
+
+  if [[ -n "${body}" ]]; then
+    args+=(-d "${body}")
+  fi
+
+  curl "${args[@]}" "${BASE_URL}${path}"
 }
 
 get() {
