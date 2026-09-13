@@ -1,0 +1,17 @@
+{
+  "name": "mini-app-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "New Relic verification API and payments mock",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "newrelic": "^12.18.2"
+  }
+}

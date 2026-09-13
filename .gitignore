@@ -1,0 +1,11 @@
+.env
+node_modules/
+.DS_Store
+.derivedData/
+DerivedData/
+**/xcuserdata/
+**/*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+ios/MiniAppObservability.xcodeproj/project.xcworkspace/xcuserdata/
+ios/MiniAppObservability.xcodeproj/xcuserdata/
