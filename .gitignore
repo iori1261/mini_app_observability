@@ -10,7 +10,10 @@ node_modules/
 .DS_Store
 .derivedData/
 DerivedData/
+# Xcode スキームには環境変数（= Mobile の Application Token）が保存される。
+# 「Shared」にすると xcshareddata 側に移り、追跡対象になってしまうため両方除外する。
 **/xcuserdata/
+**/xcshareddata/xcschemes/
 **/*.xcuserstate
 *.xccheckout
 *.xcscmblueprint

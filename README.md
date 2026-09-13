@@ -15,21 +15,25 @@ New Relic の画面でどう見えるかを確認できます。無料枠だけ�
 
 アプリのボタンを押す → Docker 上の API が動く → New Relic に記録が残る、という流れを一通り体験できます。
 
-| 学べること | このアプリでの再現方法 |
-|---|---|
-| **APM**（アプリ性能監視） | 注文 API のレイテンシ・スループット・エラー率を見る |
-| **分散トレーシング** | 注文 API → 決済サービスへの呼び出しを 1 本の線で追う |
-| **エラー追跡** | 意図的に 500 を出し、Errors inbox とスタックトレースを見る |
-| **依存先の障害** | 決済サービスだけ落として、「自分のバグではない」と切り分ける |
-| **ログ連携** | `request.id` で、1 リクエストの APM とログを突き合わせる |
-| **エラー率の読み方** | 約 30% 失敗する負荷を流し、率として観測する |
-| **NRQL** | 画面に出るクエリをコピーして、自分で数字を出す |
-| **モバイル監視**（任意） | iOS アプリ側の操作・HTTP・クラッシュを見る |
+
+| 学べること            | このアプリでの再現方法                            |
+| ---------------- | -------------------------------------- |
+| **APM**（アプリ性能監視） | 注文 API のレイテンシ・スループット・エラー率を見る           |
+| **分散トレーシング**     | 注文 API → 決済サービスへの呼び出しを 1 本の線で追う        |
+| **エラー追跡**        | 意図的に 500 を出し、Errors inbox とスタックトレースを見る |
+| **依存先の障害**       | 決済サービスだけ落として、「自分のバグではない」と切り分ける         |
+| **ログ連携**         | `request.id` で、1 リクエストの APM とログを突き合わせる |
+| **エラー率の読み方**     | 約 30% 失敗する負荷を流し、率として観測する               |
+| **NRQL**         | 画面に出るクエリをコピーして、自分で数字を出す                |
+| **モバイル監視**（任意）   | iOS アプリ側の操作・HTTP・クラッシュを見る              |
+
 
 ボタンを押すたびに、画面に「**何が起きたか**」「**New Relic のどの画面をどの順に開くか**」
 「**そのまま貼れる NRQL**」が日本語で表示されます。英語の画面名には訳を添えています。
 
 ---
+
+
 
 ## 構成
 
@@ -52,20 +56,30 @@ iOS を使わず、ターミナルの `curl` だけでも全機能を試せま�
 
 ---
 
+
+
 ## 必要なもの
 
-| 必須 | 用途 |
-|---|---|
-| Docker Desktop | API と決済サービスを動かす |
+
+| 必須                | 用途                |
+| ----------------- | ----------------- |
+| Docker Desktop    | API と決済サービスを動かす   |
 | New Relic 無料アカウント | データを見る。クレジットカード不要 |
 
-| 任意 | 用途 |
-|---|---|
+
+
+| 任意          | 用途                 |
+| ----------- | ------------------ |
 | Xcode 15 以降 | iOS アプリから操作したい場合のみ |
+
 
 ---
 
+
+
 ## 使い方
+
+
 
 ### 1. API を起動する
 
@@ -89,23 +103,25 @@ curl http://127.0.0.1:8080/health
 make verify   # 全シナリオを 1 回ずつ実行して結果を表示
 ```
 
+
+
 ### 2. New Relic に繋ぐ
 
 1. [New Relic](https://newrelic.com/) で無料アカウントを作る
 2. [one.newrelic.com/api-keys](https://one.newrelic.com/api-keys) を開く
-3. **Create a key** → Key type は **Ingest - License** を選ぶ
+3. **画面右上にある自分のアイコンCreate a key** → Key type は **Ingest - License** を選ぶ
 4. 作成直後に表示されるキー全体をコピーする
 
 > 一覧に出ている **Key ID** は鍵ではありません。これを貼ると `401 invalid license key` になります。
 > User key（`NRAK-` で始まる）も違います。
 
-5. `.env` に貼る
+1. `.env` に貼る
 
 ```bash
 NEW_RELIC_LICENSE_KEY=ここにキー
 ```
 
-6. 入れ直す
+1. 入れ直す
 
 ```bash
 docker compose down && docker compose up -d
@@ -142,34 +158,44 @@ New Relic Mobile も使う場合は、下の「モバイル監視を有効にす
 
 ---
 
+
+
 ## ボタンの一覧
 
 アプリは 3 ステップに分かれています。ターミナル派は右の `curl` で同じことができます。
 
 ### STEP 1 画面の場所を覚える
 
-| ボタン | 呼び出す API | 見る画面 |
-|---|---|---|
-| 動いているか確認する | `GET /health` | APM の Transactions |
-| 注文する | `POST /orders` → `POST /charge` | Distributed tracing、Service map |
-| 直前の注文を読む | `GET /orders/:id` | `request.id` で 1 件を追う |
+
+| ボタン        | 呼び出す API                        | 見る画面                            |
+| ---------- | ------------------------------- | ------------------------------- |
+| 動いているか確認する | `GET /health`                   | APM の Transactions              |
+| 注文する       | `POST /orders` → `POST /charge` | Distributed tracing、Service map |
+| 直前の注文を読む   | `GET /orders/:id`               | `request.id` で 1 件を追う           |
+
+
+
 
 ### STEP 2 わざと壊して違いを見る
 
-| ボタン | 呼び出す API | 崩れる指標 |
-|---|---|---|
-| わざと遅くする | `POST /orders/slow` | Latency のみ。エラー率は上がらない |
-| サーバー側を壊す | `POST /chaos/error` | Errors。原因は api の中 |
+
+| ボタン        | 呼び出す API                 | 崩れる指標                 |
+| ---------- | ------------------------ | --------------------- |
+| わざと遅くする    | `POST /orders/slow`      | Latency のみ。エラー率は上がらない |
+| サーバー側を壊す   | `POST /chaos/error`      | Errors。原因は api の中     |
 | 決済サービスを落とす | `POST /chaos/dependency` | Errors。原因は payments 側 |
+
 
 「遅い」と「壊れている」が別物だと分かることが、この STEP の目的です。
 
 ### STEP 3 グラフを動かす
 
-| ボタン | 内容 | 見る指標 |
-|---|---|---|
-| 正常な負荷を流す | 60 件、失敗なし | Throughput が上がり、Error rate は 0% |
-| エラーを混ぜた負荷を流す | 40 件、約 30% が失敗 | Error rate が 30% 前後 |
+
+| ボタン          | 内容             | 見る指標                            |
+| ------------ | -------------- | ------------------------------- |
+| 正常な負荷を流す     | 60 件、失敗なし      | Throughput が上がり、Error rate は 0% |
+| エラーを混ぜた負荷を流す | 40 件、約 30% が失敗 | Error rate が 30% 前後             |
+
 
 ```bash
 ./scripts/load.sh 200 10   # 件数と失敗率を自分で指定する
@@ -179,17 +205,23 @@ New Relic Mobile も使う場合は、下の「モバイル監視を有効にす
 
 ---
 
+
+
 ## ドキュメント
 
-| ファイル | 内容 |
-|---|---|
-| [docs/first-run.md](docs/first-run.md) | はじめての 30 分。押す順番と見る画面だけ |
-| [docs/new-relic-sre.md](docs/new-relic-sre.md) | 各画面の役割、英語の意味、勉強する順序 |
+
+| ファイル                                           | 内容                     |
+| ---------------------------------------------- | ---------------------- |
+| [docs/first-run.md](docs/first-run.md)         | はじめての 30 分。押す順番と見る画面だけ |
+| [docs/new-relic-sre.md](docs/new-relic-sre.md) | 各画面の役割、英語の意味、勉強する順序    |
+
 
 `docs/new-relic-sre.md` には、左メニューの英語表記と日本語の意味、
 APM 内の各画面が何のためにあるか、SRE として何をどの順に身につけるかをまとめています。
 
 ---
+
+
 
 ## モバイル監視を有効にする（任意）
 
@@ -198,18 +230,24 @@ APM 内の各画面が何のためにあるか、SRE として何をどの順に
 1. New Relic で **Add Data → Mobile → iOS** を選び、アプリを追加する
 2. 発行された **Application Token** をコピーする
 3. Xcode で File → Add Package Dependencies に
-   `https://github.com/newrelic/newrelic-ios-agent-spm` を追加する
+  `https://github.com/newrelic/newrelic-ios-agent-spm` を追加する
 4. Xcode の **Product → Scheme → Edit Scheme → Run → Arguments** を開く
 5. **Environment Variables** に `NEW_RELIC_APP_TOKEN` を追加してトークンを貼る
 6. アプリを再起動する
 
-> トークンをソースコードに直接書かないでください。
-> スキームの設定は `xcuserdata` に保存され、Git には含まれません。
-> `AppConfig.swift` はリポジトリに追跡されているため、書き込むとそのまま公開されます。
+> **トークンをソースコードに直接書かないでください。**
+> `AppConfig.swift` は追跡されているため、書き込むとそのまま公開されます。
+>
+> スキームの設定は通常 `xcuserdata`（`.gitignore` 済み）に保存されます。
+> ただし Edit Scheme 画面で **「Shared」にチェックを入れると** `xcshareddata` **に移動し、
+> 本来は共有される場所になります。** チェックは入れないでください。
+> 事故に備えて `**/xcshareddata/xcschemes/` も `.gitignore` に入れてあります。
 
 有効にすると、ボタン操作が Interaction・Breadcrumb・カスタムイベント `ButtonTap` として送られます。
 
 ---
+
+
 
 ## セキュリティ上の注意
 
@@ -217,10 +255,12 @@ APM 内の各画面が何のためにあるか、SRE として何をどの順に
 
 ### 絶対にコミットしないもの
 
-| 種類 | 置き場所 | 保護 |
-|---|---|---|
-| New Relic License Key | `.env` | `.gitignore` 済み |
-| Mobile Application Token | Xcode スキームの環境変数 | `xcuserdata` は `.gitignore` 済み |
+
+| 種類                       | 置き場所            | 保護                                                        |
+| ------------------------ | --------------- | --------------------------------------------------------- |
+| New Relic License Key    | `.env`          | `.gitignore` 済み                                           |
+| Mobile Application Token | Xcode スキームの環境変数 | `xcuserdata` と `xcshareddata/xcschemes` は `.gitignore` 済み |
+
 
 `.env` をコピーして使ってください。`.env.example` のみが追跡されます。
 
@@ -241,24 +281,39 @@ GitHub の **Settings → Code security** で **Secret scanning** と **Push pro
 ```
 
 iPhone 実機から繋ぐときだけ、`.env` で一時的に広げてください。
-同じ Wi-Fi にいる全員から見えるようになります。作業が終わったら戻してください。
 
 ```bash
 API_BIND=0.0.0.0
 ```
 
+> この API には認証がありません。`0.0.0.0` にすると、**同じ Wi-Fi にいる誰でも**
+> `/chaos/*` を叩いてエラーを注入できます。カフェや社内など共有ネットワークでは避けて、
+> 実機テストが終わったら行を消して `docker compose up -d` で戻してください。
+
+
+
 ### 意図的にそうしている設定
 
 学習用途のため、本番なら避ける設定をあえて使っています。**流用しないでください。**
 
-| 設定 | 場所 | 本番でどうすべきか |
-|---|---|---|
-| CORS を全許可（`*`） | `apps/backend/src/api.js` | `.env` の `CORS_ORIGIN` で具体的なオリジンに絞る |
-| HTTP 平文通信を許可 | `ios/.../Info.plist` | HTTPS を使う。例外は `127.0.0.1` と localhost に限定済み |
-| 認証なしの API | `apps/backend/src/api.js` | 認証・レート制限を入れる |
-| 障害注入エンドポイント | `/chaos/*` | 本番には置かない |
 
-コンテナは非 root ユーザー（`node`）で動き、依存は `npm ci` で lockfile 固定です。
+| 設定           | 場所                        | 本番でどうすべきか                                   |
+| ------------ | ------------------------- | ------------------------------------------- |
+| 認証なしの API    | `apps/backend/src/api.js` | 認証・レート制限を入れる                                |
+| 障害注入エンドポイント  | `/chaos/*`                | 本番には置かない                                    |
+| HTTP 平文通信を許可 | `ios/.../Info.plist`      | HTTPS を使う。例外は `127.0.0.1` と localhost に限定済み |
+
+
+次の防御は最初から入れています。
+
+- API は既定で `127.0.0.1` のみに公開
+- **CORS は既定で無効**。有効にすると、あなたが開いた任意の Web ページから `/chaos/`* を起動できてしまうため
+- 受け取ったヘッダーと `sku` は長さを制限（New Relic の取り込み量を無駄に消費させないため）
+- リクエストボディは 16 KB まで
+- コンテナは非 root ユーザー（`node`）で実行
+- 依存は `npm ci` で lockfile 固定
+
+
 
 ### 依存パッケージ
 
@@ -269,6 +324,8 @@ cd apps/backend && npm audit
 ```
 
 ---
+
+
 
 ## 無料枠について
 
@@ -283,6 +340,8 @@ New Relic の無料枠は、このアプリの規模なら十分に余裕があ�
 
 ---
 
+
+
 ## ディレクトリ
 
 ```text
@@ -294,17 +353,23 @@ docs            New Relic の画面ガイド
 
 ---
 
+
+
 ## よくあるつまずき
 
-| 症状 | 原因と対処 |
-|---|---|
-| APM に何も出ない | 1〜3 分待つ。時間範囲を Last 30 minutes に |
-| `401 invalid license key` | Key ID や User key を貼っている。Ingest - License を作り直す |
-| グラフが平らなまま | リクエストが少ない。`make load` を実行する |
-| iOS から繋がらない | シミュレータは `127.0.0.1`。実機は `API_BIND=0.0.0.0` と LAN IP が必要 |
-| ポートが使用中 | `docker compose down` してから起動し直す |
+
+| 症状                        | 原因と対処                                                   |
+| ------------------------- | ------------------------------------------------------- |
+| APM に何も出ない                | 1〜3 分待つ。時間範囲を Last 30 minutes に                         |
+| `401 invalid license key` | Key ID や User key を貼っている。Ingest - License を作り直す         |
+| グラフが平らなまま                 | リクエストが少ない。`make load` を実行する                             |
+| iOS から繋がらない               | シミュレータは `127.0.0.1`。実機は `API_BIND=0.0.0.0` と LAN IP が必要 |
+| ポートが使用中                   | `docker compose down` してから起動し直す                         |
+
 
 ---
+
+
 
 ## ライセンス
 

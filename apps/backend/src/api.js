@@ -5,12 +5,19 @@ const log = require("./log");
 const app = express();
 const port = Number(process.env.PORT || 8080);
 const paymentsUrl = process.env.PAYMENTS_URL || "http://payments:4000";
-const corsOrigin = process.env.CORS_ORIGIN || "*";
+// CORS は既定で無効。iOS アプリも curl もブラウザではないので不要で、
+// 有効にすると利用者が開いた任意の Web ページから /chaos/* を起動できてしまう。
+// ブラウザから試すときだけ .env の CORS_ORIGIN にオリジンを明示する。
+const corsOrigin = process.env.CORS_ORIGIN || "";
+
 const orders = new Map();
 
 // ヘッダーの中身はログと New Relic の属性にそのまま入り、取り込み量（無料枠 100 GB）を
 // 消費する。呼び出し側が巨大な値や制御文字を送れないよう、長さと文字種を先に絞る。
 const MAX_HEADER_VALUE = 100;
+const MAX_SKU_LENGTH = 64;
+// 負荷シナリオを何度も流すと注文が溜まり続けるので、古いものから捨てる。
+const MAX_ORDERS = 1000;
 
 function safeHeader(value, fallback) {
   if (typeof value !== "string") {
@@ -21,6 +28,22 @@ function safeHeader(value, fallback) {
   return cleaned || fallback;
 }
 
+function applyCors(res) {
+  if (!corsOrigin) {
+    return;
+  }
+  res.set("access-control-allow-origin", corsOrigin);
+  res.set("vary", "origin");
+}
+
+function rememberOrder(order) {
+  orders.set(order.id, order);
+  while (orders.size > MAX_ORDERS) {
+    const oldest = orders.keys().next().value;
+    orders.delete(oldest);
+  }
+}
+
 app.use(express.json({ limit: "16kb" }));
 app.use((req, res, next) => {
   const requestId = safeHeader(req.get("x-request-id"), randomUUID());
@@ -28,8 +51,8 @@ app.use((req, res, next) => {
   req.clientAction = safeHeader(req.get("x-client-action"), "unknown");
   req.clientPlatform = safeHeader(req.get("x-client-platform"), "unknown");
   res.set("x-request-id", requestId);
-  res.set("access-control-allow-origin", corsOrigin);
   res.set("access-control-expose-headers", "x-request-id");
+  applyCors(res);
 
   log.addTransactionAttributes({
     "request.id": requestId,
@@ -54,7 +77,11 @@ app.use((req, res, next) => {
 });
 
 app.options("*", (_req, res) => {
-  res.set("access-control-allow-origin", corsOrigin);
+  if (!corsOrigin) {
+    return res.status(405).end();
+  }
+
+  applyCors(res);
   res.set("access-control-allow-headers", "content-type, x-request-id, x-client-action, x-client-platform");
   res.set("access-control-allow-methods", "GET,POST,OPTIONS");
   res.status(204).end();
@@ -122,8 +149,9 @@ app.use((error, req, res, _next) => {
 });
 
 async function createOrder(req, res, { delayMs, failPayment }) {
-  const sku = String(req.body?.sku || "demo-item");
-  const quantity = Number(req.body?.quantity || 1);
+  // sku も New Relic の属性になるので、長さを切っておかないと取り込み量に響く。
+  const sku = String(req.body?.sku || "demo-item").slice(0, MAX_SKU_LENGTH);
+  const quantity = Math.min(Math.max(Number(req.body?.quantity) || 1, 1), 100);
   const amount = quantity * 1200;
 
   log.addTransactionAttributes({
@@ -156,7 +184,7 @@ async function createOrder(req, res, { delayMs, failPayment }) {
       requestId: req.requestId,
       createdAt: new Date().toISOString(),
     };
-    orders.set(order.id, order);
+    rememberOrder(order);
 
     log.info("order_created", {
       requestId: req.requestId,
