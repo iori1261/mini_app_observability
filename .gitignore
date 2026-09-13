@@ -1,4 +1,11 @@
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.*
+Secrets.*
+
 node_modules/
 .DS_Store
 .derivedData/

@@ -3,11 +3,14 @@ services:
     build:
       context: ./apps/backend
     ports:
-      - "8080:8080"
+      # 既定では自分の Mac からしか届かない。/chaos/* を同じ Wi-Fi の他人に
+      # 叩かれないようにするため。実機で試すときだけ .env で API_BIND=0.0.0.0 にする。
+      - "${API_BIND:-127.0.0.1}:8080:8080"
     environment:
       SERVICE_NAME: api
       PORT: "8080"
       PAYMENTS_URL: http://payments:4000
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
       NEW_RELIC_LICENSE_KEY: ${NEW_RELIC_LICENSE_KEY:-}
       NEW_RELIC_APP_NAME: mini-app-api
       NEW_RELIC_NO_CONFIG_FILE: "true"

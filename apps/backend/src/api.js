@@ -5,6 +5,7 @@ const log = require("./log");
 const app = express();
 const port = Number(process.env.PORT || 8080);
 const paymentsUrl = process.env.PAYMENTS_URL || "http://payments:4000";
+const corsOrigin = process.env.CORS_ORIGIN || "*";
 const orders = new Map();
 
 app.use(express.json());
@@ -14,7 +15,7 @@ app.use((req, res, next) => {
   req.clientAction = req.get("x-client-action") || "unknown";
   req.clientPlatform = req.get("x-client-platform") || "unknown";
   res.set("x-request-id", requestId);
-  res.set("access-control-allow-origin", "*");
+  res.set("access-control-allow-origin", corsOrigin);
   res.set("access-control-expose-headers", "x-request-id");
 
   log.addTransactionAttributes({
@@ -40,7 +41,7 @@ app.use((req, res, next) => {
 });
 
 app.options("*", (_req, res) => {
-  res.set("access-control-allow-origin", "*");
+  res.set("access-control-allow-origin", corsOrigin);
   res.set("access-control-allow-headers", "content-type, x-request-id, x-client-action, x-client-platform");
   res.set("access-control-allow-methods", "GET,POST,OPTIONS");
   res.status(204).end();
