@@ -8,12 +8,25 @@ const paymentsUrl = process.env.PAYMENTS_URL || "http://payments:4000";
 const corsOrigin = process.env.CORS_ORIGIN || "*";
 const orders = new Map();
 
-app.use(express.json());
+// ヘッダーの中身はログと New Relic の属性にそのまま入り、取り込み量（無料枠 100 GB）を
+// 消費する。呼び出し側が巨大な値や制御文字を送れないよう、長さと文字種を先に絞る。
+const MAX_HEADER_VALUE = 100;
+
+function safeHeader(value, fallback) {
+  if (typeof value !== "string") {
+    return fallback;
+  }
+
+  const cleaned = value.replace(/[^\w.:@/-]/g, "").slice(0, MAX_HEADER_VALUE);
+  return cleaned || fallback;
+}
+
+app.use(express.json({ limit: "16kb" }));
 app.use((req, res, next) => {
-  const requestId = req.get("x-request-id") || randomUUID();
+  const requestId = safeHeader(req.get("x-request-id"), randomUUID());
   req.requestId = requestId;
-  req.clientAction = req.get("x-client-action") || "unknown";
-  req.clientPlatform = req.get("x-client-platform") || "unknown";
+  req.clientAction = safeHeader(req.get("x-client-action"), "unknown");
+  req.clientPlatform = safeHeader(req.get("x-client-platform"), "unknown");
   res.set("x-request-id", requestId);
   res.set("access-control-allow-origin", corsOrigin);
   res.set("access-control-expose-headers", "x-request-id");
@@ -91,13 +104,18 @@ app.post("/chaos/dependency", async (req, res) => {
 });
 
 app.use((error, req, res, _next) => {
+  // ボディ超過などは Express が status を付けてくれる。何でも 500 にすると
+  // 「サーバーが壊れた」と「リクエストが不正」の区別がつかなくなる。
+  const status = error.status || error.statusCode || 500;
+
   log.noticeError(error, { requestId: req.requestId });
   log.error("unhandled_error", {
     requestId: req.requestId,
+    status,
     message: error.message,
   });
-  res.status(500).json({
-    error: "unhandled_error",
+  res.status(status).json({
+    error: status >= 500 ? "unhandled_error" : "bad_request",
     message: error.message,
     requestId: req.requestId,
   });
