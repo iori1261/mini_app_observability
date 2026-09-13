@@ -8,13 +8,14 @@ actor APIClient {
         self.session = session
     }
 
+    /// ボタン 1 回ぶんの実行。計装（Interaction / Breadcrumb / ButtonTap）つき。
     func run(_ scenario: Scenario) async -> APIResult {
         let interactionId = Observability.startInteraction(named: scenario.title)
         Observability.breadcrumb(action: "button_tap", extra: ["scenario": scenario.kind.rawValue])
 
         let started = Date()
         do {
-            let outcome = try await perform(scenario)
+            let outcome = try await perform(scenario.kind)
             let durationMs = Int(Date().timeIntervalSince(started) * 1000)
             Observability.recordButtonTap(
                 scenario,
@@ -30,7 +31,9 @@ actor APIClient {
                 requestId: outcome.requestId,
                 bodyText: outcome.bodyText,
                 isSuccess: outcome.isSuccess,
-                createdAt: Date()
+                createdAt: Date(),
+                successCount: outcome.isSuccess ? 1 : 0,
+                failureCount: outcome.isSuccess ? 0 : 1
             )
         } catch {
             let durationMs = Int(Date().timeIntervalSince(started) * 1000)
@@ -43,20 +46,31 @@ actor APIClient {
                 requestId: "-",
                 bodyText: error.localizedDescription,
                 isSuccess: false,
-                createdAt: Date()
+                createdAt: Date(),
+                successCount: 0,
+                failureCount: 1
             )
         }
     }
 
-    private func perform(_ scenario: Scenario) async throws -> (statusCode: Int, requestId: String, bodyText: String, isSuccess: Bool) {
-        switch scenario.kind {
+    /// 負荷シナリオの 1 件ぶん。件数が多いので個別の計装はしない。
+    func runOnce(_ kind: Scenario.Kind) async -> Bool {
+        do {
+            return try await perform(kind).isSuccess
+        } catch {
+            return false
+        }
+    }
+
+    private func perform(_ kind: Scenario.Kind) async throws -> (statusCode: Int, requestId: String, bodyText: String, isSuccess: Bool) {
+        switch kind {
         case .health:
-            return try await request(path: "/health", method: "GET", action: scenario.kind.rawValue)
+            return try await request(path: "/health", method: "GET", action: kind.rawValue)
         case .createOrder:
             let result = try await request(
                 path: "/orders",
                 method: "POST",
-                action: scenario.kind.rawValue,
+                action: kind.rawValue,
                 body: ["sku": "demo-item", "quantity": 1]
             )
             rememberOrderId(from: result.bodyText)
@@ -65,7 +79,7 @@ actor APIClient {
             let result = try await request(
                 path: "/orders/slow",
                 method: "POST",
-                action: scenario.kind.rawValue,
+                action: kind.rawValue,
                 body: ["sku": "slow-item", "quantity": 1]
             )
             rememberOrderId(from: result.bodyText)
@@ -74,16 +88,18 @@ actor APIClient {
             guard let lastOrderId else {
                 throw APIClientError.noOrderYet
             }
-            return try await request(path: "/orders/\(lastOrderId)", method: "GET", action: scenario.kind.rawValue)
+            return try await request(path: "/orders/\(lastOrderId)", method: "GET", action: kind.rawValue)
         case .serverError:
-            return try await request(path: "/chaos/error", method: "POST", action: scenario.kind.rawValue)
+            return try await request(path: "/chaos/error", method: "POST", action: kind.rawValue)
         case .dependencyFailure:
             return try await request(
                 path: "/chaos/dependency",
                 method: "POST",
-                action: scenario.kind.rawValue,
+                action: kind.rawValue,
                 body: ["sku": "fail-item", "quantity": 1]
             )
+        case .normalTraffic, .mixedTraffic:
+            throw APIClientError.notASingleRequest
         }
     }
 
@@ -142,13 +158,16 @@ actor APIClient {
 enum APIClientError: LocalizedError {
     case invalidResponse
     case noOrderYet
+    case notASingleRequest
 
     var errorDescription: String? {
         switch self {
         case .invalidResponse:
             return "HTTP レスポンスを解釈できませんでした"
         case .noOrderYet:
-            return "先に「注文を作成」を実行してください"
+            return "先に「注文する」を実行してください"
+        case .notASingleRequest:
+            return "これは負荷シナリオです"
         }
     }
 }

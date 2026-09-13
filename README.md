@@ -32,7 +32,9 @@ iOS アプリ（Xcode / Simulator）
 
 License Key が空でも API は起動します。Application Token が空でもボタンからの API 確認はできます。
 
-New Relic の各画面の役割、英語の意味、このプロダクトとの対応、勉強する順序は [docs/new-relic-sre.md](docs/new-relic-sre.md) にまとめています。
+New Relic が初めてなら [docs/first-run.md](docs/first-run.md) から読んでください。押す順番と見る画面だけを並べた 30 分のハンズオンです。
+
+各画面の役割、英語の意味、このプロダクトとの対応、勉強する順序は [docs/new-relic-sre.md](docs/new-relic-sre.md) にあります。
 
 ## 起動手順
 
@@ -76,16 +78,43 @@ static let apiBaseURL = URL(string: "http://192.168.1.12:8080")!
 
 ## ボタンと New Relic で見ること
 
-| ボタン | 呼び出す API | 確認場所 |
-|---|---|---|
-| ヘルスチェック | `GET /health` | Mobile HTTP、APM Transaction |
-| 注文を作成 | `POST /orders` → `POST /charge` | Distributed tracing、サービスマップ |
-| 注文を取得 | `GET /orders/:id` | カスタム属性 `request.id` |
-| 遅い注文 | `POST /orders/slow` | Mobile duration、APM レイテンシ |
-| サーバーエラー | `POST /chaos/error` | Errors inbox、error rate |
-| 決済依存の失敗 | `POST /chaos/dependency` | payments の失敗 span |
+アプリは 3 ステップに分かれています。ボタンを押すと、結果カードに **何が起きたか**、**New Relic のどの画面をどの順に開くか**、**そのまま貼れる NRQL** が出ます。
 
-画面上にも `HTTP` / `時間` / `request.id` / レスポンス本文が出ます。同じ `request.id` で Mobile と APM を突き合わせられます。
+### STEP 1 画面の場所を覚える
+
+| ボタン | 呼び出す API | 見る画面 |
+|---|---|---|
+| 動いているか確認する | `GET /health` | APM の Transactions |
+| 注文する | `POST /orders` → `POST /charge` | Distributed tracing、Service map |
+| 直前の注文を読む | `GET /orders/:id` | `request.id` で 1 件を追う |
+
+### STEP 2 わざと壊して違いを見る
+
+| ボタン | 呼び出す API | 崩れる指標 |
+|---|---|---|
+| わざと遅くする | `POST /orders/slow` | Latency のみ。エラー率は上がらない |
+| サーバー側を壊す | `POST /chaos/error` | Errors。原因は api の中 |
+| 決済サービスを落とす | `POST /chaos/dependency` | Errors。原因は payments 側 |
+
+### STEP 3 グラフを動かす
+
+1 回押しただけではエラー率もスループットも読めません。まとめて送ります。
+
+| ボタン | 内容 | 見る指標 |
+|---|---|---|
+| 正常な負荷を流す | 60 件、失敗なし | Throughput が上がり、Error rate は 0% |
+| エラーを混ぜた負荷を流す | 40 件、約 30% が失敗 | Error rate が 30% 前後 |
+
+ターミナルでも同じことができます。
+
+```bash
+make load          # 60 件、正常系のみ
+make load-errors   # 100 件、約 30% を失敗させる
+
+./scripts/load.sh 200 10   # 件数と失敗率を指定する
+```
+
+手元に出る「エラー率」と、New Relic の Error rate が同じ数字になるか見比べてください。反映まで 1〜3 分かかります。画面右上の時間範囲は **Last 30 minutes** にします。
 
 ## NRQL の例
 
@@ -117,5 +146,6 @@ FACET name, success SINCE 1 hour ago
 ```text
 apps/backend    Docker で動く API と payments
 ios             SwiftUI 検証アプリ
-scripts         API の curl 確認
+scripts         API の疎通確認（verify-api.sh）と負荷生成（load.sh）
+docs            New Relic の画面ガイド
 ```

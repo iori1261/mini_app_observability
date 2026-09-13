@@ -47,4 +47,20 @@ enum Observability {
         )
         #endif
     }
+
+    static func recordTrafficRun(_ scenario: Scenario, total: Int, failures: Int, durationMs: Int) {
+        #if canImport(NewRelic)
+        NewRelic.recordCustomEvent(
+            "TrafficRun",
+            name: scenario.kind.rawValue,
+            attributes: [
+                "title": scenario.title,
+                "total": total,
+                "failures": failures,
+                "errorRate": total > 0 ? Double(failures) / Double(total) : 0,
+                "durationMs": durationMs,
+            ]
+        )
+        #endif
+    }
 }
